@@ -9,10 +9,6 @@ Dependency-Aware Multi-Phase Liver Tumor Segmentation is a deep-learning framewo
 - [Project Overview](#project-overview)
 - [Repository Structure](#repository-structure)
 - [Getting Started](#getting-started)
-- [Key Innovations](#key-innovations)
-  - [Shared Per-Phase Encoding](#shared-per-phase-encoding)
-  - [Learned Phase Gating](#learned-phase-gating)
-  - [Explicit Pairwise Phase Interaction](#explicit-pairwise-phase-interaction)
 - [Experimental Results](#experimental-results)
 - [Citations](#citations)
 
@@ -84,64 +80,6 @@ The notebooks contain implementations of:
 - Phase 4: Four-phase Harvard multi-phase Attention U-Net baseline
 - Phase 5: Final 2.5D Dependency-Aware Attention U-Net with all-15-subset analysis
 
-## Key Innovations
-
-### Shared Per-Phase Encoding
-
-The Phase 5 model partitions the 12-channel 2.5D input into four phase-specific groups (3 neighboring slices per phase) and encodes each group independently with a shared encoder, producing a deep bottleneck feature `f_p` and skip features `s_p` per phase:
-
-```python
-def encode_phases(self, x):
-    # x: (B, 12, H, W)  ->  4 groups of 3 channels (NC, AP, PVP, DP)
-    feats, skips = {}, {}
-    for p, idx in zip(["NC", "AP", "PVP", "DP"], [0, 3, 6, 9]):
-        x_p = x[:, idx:idx + 3]
-        f_p, s_p = self.shared_encoder(x_p)
-        feats[p], skips[p] = f_p, s_p
-    return feats, skips
-```
-
-This preserves a distinct representation for each phase — necessary if phase relationships are to be modeled explicitly rather than absorbed into a generic feature tensor — while keeping the architecture parameter-efficient through weight sharing.
-
-### Learned Phase Gating
-
-After encoding, the model predicts a scalar gate per phase from its bottleneck feature. Gates are clamped to `[0.15, 1.0]` so that no phase collapses completely during training:
-
-```python
-def phase_gates(self, feats):
-    gates = {}
-    for p, f_p in feats.items():
-        g = torch.sigmoid(self.gate_head(f_p))
-        gates[p] = 0.15 + 0.85 * g            # clamped to [0.15, 1.0]
-    return gates
-
-def gated_fuse(self, feats, gates, presence):
-    weights = {p: gates[p] * presence[p] for p in feats}
-    norm = sum(weights.values()) + 1e-6
-    f_bar = sum(weights[p] * feats[p] for p in feats) / norm
-    return f_bar
-```
-
-The decoder receives a fused representation whose composition depends on what the model has learned about phase usefulness for each sample, rather than a blind concatenation of phase features.
-
-### Explicit Pairwise Phase Interaction
-
-The main novelty: for every pair of phases the model computes an elementwise interaction `f_i ⊙ f_j`, averages the pairwise maps, and projects the result back into the fused bottleneck space:
-
-```python
-def pairwise_interaction(self, feats, f_bar):
-    pairs = []
-    keys = list(feats.keys())
-    for i in range(len(keys)):
-        for j in range(i + 1, len(keys)):
-            pairs.append(feats[keys[i]] * feats[keys[j]])  # elementwise
-    c = torch.stack(pairs, dim=0).mean(dim=0)              # averaged context
-    z = f_bar + torch.tanh(self.alpha) * self.W_c(c)       # injected back
-    return z
-```
-
-This encourages the model to learn where phases agree, reinforce one another, or jointly highlight structures that would be weaker in a single-stream representation, moving the project from implicit multi-phase fusion to **explicit interaction modeling**.
-
 ## Experimental Results
 
 The final 2.5D `DependencyAttentionUNet` was trained on the 100-patient Harvard multi-phase split with a focal CE + Dice + tumor focal Tversky loss (mixed `0.25 / 0.35 / 0.40`), AdamW, validation-tuned thresholds, horizontal-flip TTA, and liver-constrained post-processing.
@@ -152,8 +90,6 @@ The final 2.5D `DependencyAttentionUNet` was trained on the 100-patient Harvard 
 |--------------------------|---------------------------|-------------------------------|----------------------------------------|
 | Liver DSC                | 0.9111                    | 0.8896                        | **0.9435**                             |
 | Tumor DSC                | 0.3360                    | 0.5287                        | **0.6975**                             |
-
-![Test DSC summary](figures/fig2_test_dsc_summary.png)
 
 ### Learned Phase-Gate Importance
 
@@ -190,8 +126,6 @@ The fixed trained model was evaluated under all 15 possible non-empty phase comb
 | AP+PVP+DP     | 3 | 0.9440    | 0.7109     |
 | NC+AP+PVP+DP  | 4 | 0.9435    | 0.6975     |
 
-![All phase combinations tumor DSC](figures/fig4_all_phase_combinations_tumor_dsc.png)
-
 ![Best phase subset per cardinality](figures/fig5_best_phase_subset_summary.png)
 
 Key observations:
@@ -202,12 +136,6 @@ Key observations:
 4. **All four phases**: `NC+AP+PVP+DP` (`0.6975`) — strong, but not the absolute top tumor configuration.
 
 The combination of shared per-phase encoding, learned phase gates, and explicit pairwise interaction modeling yields a robust framework for multi-phase liver tumor segmentation, achieving a **+0.17** absolute improvement in tumor DSC over the Harvard four-phase Attention U-Net baseline while exposing direct, interpretable evidence about which phase combinations are genuinely useful.
-
-### Training Dynamics
-
-![Training dynamics](figures/fig1_training_dynamics.png)
-
-Validation tumor DSC stabilises before early stopping triggers (patience `5` on `0.35·liverDSC + 0.65·tumorDSC`), while liver DSC plateaus in the high `0.94` range.
 
 ## Citations
 

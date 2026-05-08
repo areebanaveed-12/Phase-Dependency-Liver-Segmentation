@@ -31,13 +31,16 @@ Phase-Dependency-Liver-Segmentation/
 │   ├── Phase-3.ipynb               # Phase 3: single-phase U-Net baseline on LiTS
 │   ├── Phase-4.ipynb               # Phase 4: four-phase Harvard baseline (Attention U-Net)
 │   └── Phase-5.ipynb               # Phase 5: final dependency-aware multi-phase model
-└── figures/
-    ├── fig1_training_dynamics.png            # Training/validation loss & DSC curves
-    ├── fig2_test_dsc_summary.png             # Held-out test liver/tumor DSC
-    ├── fig3_phase_gate_importance.png        # Average learned phase-gate activations
-    ├── fig4_all_phase_combinations_tumor_dsc.png   # Tumor DSC across all 15 subsets
-    ├── fig5_best_phase_subset_summary.png    # Best subset per cardinality
-    └── fig6_qualitative_predictions.png      # Qualitative segmentation outputs
+├── figures/
+│   ├── fig1_training_dynamics.png            # Training/validation loss & DSC curves
+│   ├── fig2_test_dsc_summary.png             # Held-out test liver/tumor DSC
+│   ├── fig3_phase_gate_importance.png        # Average learned phase-gate activations
+│   ├── fig4_all_phase_combinations_tumor_dsc.png   # Tumor DSC across all 15 subsets
+│   ├── fig5_best_phase_subset_summary.png    # Best subset per cardinality
+│   └── fig6_qualitative_predictions.png      # Qualitative segmentation outputs
+└── research-paper/
+    ├── final-research-paper.pdf    # Final ICML-style report
+    └── SOA_survey.pdf              # State-of-the-art survey that motivated the project
 ```
 
 ## Getting Started

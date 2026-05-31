@@ -23,7 +23,7 @@ A deep-learning framework for joint liver and tumor segmentation from four-phase
 Multi-phase CT acquires the liver under four contrast conditions — NC, AP, PVP, DP — each revealing different enhancement behavior and lesion conspicuity. Most methods fuse phases through generic channel concatenation, treating phase relationships **implicitly**. This project addresses that gap through:
 
 1. **Phase-specific encoding** — each phase is encoded by a shared per-phase encoder, preserving phase identity until fusion.
-2. **Learned phase gating** — per-phase scalar gates $g_k \in [0.15, 1.0]$ weight every phase contribution before aggregation.
+2. **Learned phase gating** — per-phase scalar gates g_k ∈ [0.15, 1.0] weight every phase contribution before aggregation.
 3. **Explicit pairwise interaction modeling** — pairwise feature products are projected back into the fused bottleneck so the decoder reasons over phase agreement and complementarity.
 
 A central finding: **the all-phase configuration is not the best tumor-performing setting**. Reduced subsets such as PVP+DP (0.8496 tumor DSC) and AP+PVP+DP (0.8533) outperform the full four-phase input (0.8409), demonstrating that multi-phase performance depends not only on having more phases but on how those phases interact.
@@ -35,6 +35,7 @@ A central finding: **the all-phase configuration is not the best tumor-performin
 ```
 Phase-Dependency-Liver-Segmentation/
 ├── README.md
+├── requirements.txt
 ├── src/
 │   ├── Phase-3.ipynb          # Single-phase U-Net baseline on LiTS
 │   ├── Phase-4.ipynb          # Four-phase Harvard Attention U-Net baseline
@@ -109,7 +110,7 @@ All Harvard-trained models share the same 360/77/77 patient-wise split, preproce
 
 ![Training Dynamics](figures/fig1_training_dynamics.png)
 
-Best checkpoint at epoch 18, selected by $0.35 \cdot \text{DSC}_\text{liver} + 0.65 \cdot \text{DSC}_\text{tumor}$. Early stopping triggers at epoch 23.
+Best checkpoint at epoch 18, selected by `0.35 · DSC_liver + 0.65 · DSC_tumor`. Early stopping triggers at epoch 23.
 
 ### Learned Phase-Gate Importance
 

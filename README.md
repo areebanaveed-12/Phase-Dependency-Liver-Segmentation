@@ -1,159 +1,185 @@
 # Dependency-Aware Multi-Phase Liver Tumor Segmentation with Explicit Phase Interaction Modeling
 
-Dependency-Aware Multi-Phase Liver Tumor Segmentation is a deep-learning framework for liver and tumor segmentation from four-phase abdominal CT (NC, AP, PVP, DP). The framework preserves phase-specific representations, learns per-phase importance gates, and adds an **explicit pairwise cross-phase interaction term** before decoding. It substantially improves tumor segmentation in heterogeneous multi-phase CT settings, and it ships with a complete combinational dependency analysis on the fixed trained model across all 15 possible non-empty phase subsets.
+> **ICONIP 2026 submission** — Areeba Naveed, Haider Wajahat  
+> School of Science and Engineering, Lahore University of Management Sciences
 
-![Qualitative segmentation results](figures/fig6_qualitative_predictions.png)
+A deep-learning framework for joint liver and tumor segmentation from four-phase abdominal CT (NC, AP, PVP, DP). The model preserves phase-specific representations through a shared encoder, learns per-phase importance gates, and adds an explicit pairwise cross-phase interaction term before decoding. A complete combinatorial dependency analysis over all 15 non-empty phase subsets is evaluated on the fixed trained model — revealing that phase interaction is **selective, not additive**.
+
+![Qualitative Predictions](figures/fig6_qualitative_predictions.png)
+
+---
 
 ## Table of Contents
-
 - [Project Overview](#project-overview)
 - [Repository Structure](#repository-structure)
 - [Getting Started](#getting-started)
 - [Experimental Results](#experimental-results)
-- [Citations](#citations)
+- [Citation](#citation)
+
+---
 
 ## Project Overview
 
-Multi-phase CT acquires the liver across four contrast phases — non-contrast (NC), arterial (AP), portal venous (PVP), and delayed (DP) — each revealing different enhancement behavior and lesion conspicuity. Most multi-phase segmentation methods benefit from the additional inputs but treat phase relationships **implicitly** through generic channel fusion, so they cannot directly answer which phases are most useful or how phases interact. This project addresses that gap through:
+Multi-phase CT acquires the liver under four contrast conditions — NC, AP, PVP, DP — each revealing different enhancement behavior and lesion conspicuity. Most methods fuse phases through generic channel concatenation, treating phase relationships **implicitly**. This project addresses that gap through:
 
-1. **Phase-specific encoding**: Each phase is encoded by a shared per-phase encoder, preserving phase identity until fusion.
-2. **Learned phase gating**: Per-phase scalar gates weight every phase contribution before aggregation.
-3. **Explicit pairwise interaction modeling**: Pairwise feature products are projected back into the fused bottleneck so the decoder reasons over phase agreement and complementarity.
+1. **Phase-specific encoding** — each phase is encoded by a shared per-phase encoder, preserving phase identity until fusion.
+2. **Learned phase gating** — per-phase scalar gates $g_k \in [0.15, 1.0]$ weight every phase contribution before aggregation.
+3. **Explicit pairwise interaction modeling** — pairwise feature products are projected back into the fused bottleneck so the decoder reasons over phase agreement and complementarity.
 
-A central finding is that the **all-phase configuration is not the best tumor-performing setting**: reduced subsets such as `PVP+DP` (`0.7209` tumor DSC) and `AP+PVP+DP` (`0.7109` tumor DSC) outperform the full four-phase input (`0.6975`). This demonstrates that multi-phase performance depends not only on having more phases, but on how those phases interact.
+A central finding: **the all-phase configuration is not the best tumor-performing setting**. Reduced subsets such as PVP+DP (0.8496 tumor DSC) and AP+PVP+DP (0.8533) outperform the full four-phase input (0.8409), demonstrating that multi-phase performance depends not only on having more phases but on how those phases interact.
+
+---
 
 ## Repository Structure
 
 ```
 Phase-Dependency-Liver-Segmentation/
-├── README.md                       # Project documentation
+├── README.md
 ├── src/
-│   ├── Phase-3.ipynb               # Phase 3: single-phase U-Net baseline on LiTS
-│   ├── Phase-4.ipynb               # Phase 4: four-phase Harvard baseline (Attention U-Net)
-│   └── Phase-5.ipynb               # Phase 5: final dependency-aware multi-phase model
+│   ├── Phase-3.ipynb          # Single-phase U-Net baseline on LiTS
+│   ├── Phase-4.ipynb          # Four-phase Harvard Attention U-Net baseline
+│   ├── Phase-5.ipynb          # Intermediate DependencyAttentionUNet
+│   └── Phase-6.ipynb          # Final DependencyAttentionUNet (514 patients, 360/77/77)
+├── baselines/
+│   ├── riunet_baseline.ipynb  # RIU-Net: 2.5D residual-Inception U-Net
+│   ├── mixed_unet_baseline.ipynb  # Mixed 2D/3D U-Net
+│   └── spa_unet_baseline.ipynb    # SPA-UNet: spatial pyramid U-Net
 ├── figures/
-│   ├── fig1_training_dynamics.png            # Training/validation loss & DSC curves
-│   ├── fig2_test_dsc_summary.png             # Held-out test liver/tumor DSC
-│   ├── fig3_phase_gate_importance.png        # Average learned phase-gate activations
-│   ├── fig4_all_phase_combinations_tumor_dsc.png   # Tumor DSC across all 15 subsets
-│   ├── fig5_best_phase_subset_summary.png    # Best subset per cardinality
-│   └── fig6_qualitative_predictions.png      # Qualitative segmentation outputs
+│   ├── fig1_training_dynamics.png        # Training/validation loss and DSC curves
+│   ├── fig2_baseline_comparison.png      # Liver and Tumor DSC across all baselines
+│   ├── fig3_phase_gate_importance.png    # Average learned phase-gate activations
+│   ├── fig4_all_phase_combinations_tumor_dsc.png  # All 15 subsets ranked by tumor DSC
+│   ├── fig5_best_phase_subset_summary.png         # Best subset per cardinality
+│   └── fig6_qualitative_predictions.png           # Qualitative segmentation examples
 └── research-paper/
-    ├── final-research-paper.pdf    # Final ICML-style report
-    └── SOA_survey.pdf              # State-of-the-art survey that motivated the project
+    └── MultiPhaseTumor.pdf    # Full paper (ICONIP 2026 submission)
 ```
+
+---
 
 ## Getting Started
 
-### Prerequisites
-
+**Prerequisites**
 - Python 3.8+
-- PyTorch
-- torchvision
-- numpy
-- nibabel
-- matplotlib
-- pandas
-- scikit-image
-
-### Running the Code
-
-1. Clone this repository:
-
-```bash
-git clone https://github.com/areebanaveed-12/Phase-Dependency-Liver-Segmentation.git
-cd Phase-Dependency-Liver-Segmentation
-```
-
-2. Install dependencies:
+- PyTorch, torchvision
+- numpy, nibabel, matplotlib, pandas, scikit-image
 
 ```bash
 pip install torch torchvision numpy nibabel matplotlib pandas scikit-image
 ```
 
-3. Open and run the final dependency-aware notebook:
+**Running the code**
 
 ```bash
-jupyter notebook src/Phase-5.ipynb
+# Clone
+git clone https://github.com/areebanaveed-12/Phase-Dependency-Liver-Segmentation
+cd Phase-Dependency-Liver-Segmentation
+
+# Run the final model
+jupyter notebook src/Phase-6.ipynb
 ```
 
-The notebooks contain implementations of:
+| Notebook | Description |
+|---|---|
+| `src/Phase-3.ipynb` | Single-phase U-Net on LiTS (cross-benchmark reference) |
+| `src/Phase-4.ipynb` | Four-phase Harvard Attention U-Net |
+| `src/Phase-6.ipynb` | Final DependencyAttentionUNet — 514 patients, 360/77/77 split |
+| `baselines/*.ipynb` | RIU-Net, Mixed U-Net, SPA-UNet trained under identical conditions |
 
-- Phase 3: Single-phase U-Net baseline on LiTS
-- Phase 4: Four-phase Harvard multi-phase Attention U-Net baseline
-- Phase 5: Final 2.5D Dependency-Aware Attention U-Net with all-15-subset analysis
+> **Data:** The Harvard multi-phase CT cohort is an institutional dataset accessed under a data-use agreement and is not publicly redistributable.
+
+---
 
 ## Experimental Results
 
-The final 2.5D `DependencyAttentionUNet` was trained on the 100-patient Harvard multi-phase split with a focal CE + Dice + tumor focal Tversky loss (mixed `0.25 / 0.35 / 0.40`), AdamW, validation-tuned thresholds, horizontal-flip TTA, and liver-constrained post-processing.
+All Harvard-trained models share the same 360/77/77 patient-wise split, preprocessing pipeline, loss function, optimizer, and inference policy. Architecture is the sole variable.
 
-### Final Held-Out Test Performance
+### Baseline Comparison (77-patient test set)
 
-| Metric                   | Phase 3 (LiTS, 1-channel) | Phase 4 (Harvard-50, 4-phase) | Phase 5 (Harvard-100, 2.5D Dependency) |
-|--------------------------|---------------------------|-------------------------------|----------------------------------------|
-| Liver DSC                | 0.9111                    | 0.8896                        | **0.9435**                             |
-| Tumor DSC                | 0.3360                    | 0.5287                        | **0.6975**                             |
+![Baseline Comparison](figures/fig2_baseline_comparison.png)
+
+| Method | Family | Liver DSC | Tumor DSC |
+|---|---|:---:|:---:|
+| RIU-Net | 2.5D Res-Inception U-Net | 0.9298 | 0.8137 |
+| Mixed U-Net | Hybrid 2D/3D U-Net | 0.9431 | 0.8570 |
+| SPA-UNet | Spatial pyramid U-Net | 0.9594 | 0.8458 |
+| **Proposed** | **DependencyAttentionUNet** | **0.9492** | **0.8409** |
+
+### Training Dynamics
+
+![Training Dynamics](figures/fig1_training_dynamics.png)
+
+Best checkpoint at epoch 18, selected by $0.35 \cdot \text{DSC}_\text{liver} + 0.65 \cdot \text{DSC}_\text{tumor}$. Early stopping triggers at epoch 23.
 
 ### Learned Phase-Gate Importance
 
-Average gate activations on the Harvard-100 test set show that the model uses every phase, but not equally:
+![Phase Gate Importance](figures/fig3_phase_gate_importance.png)
 
 | Phase | Mean Gate |
-|-------|-----------|
-| NC    | 0.6709    |
-| AP    | 0.5903    |
-| PVP   | 0.6134    |
-| DP    | 0.6291    |
+|:---:|:---:|
+| NC | 0.274 |
+| AP | 0.259 |
+| PVP | 0.250 |
+| DP | 0.259 |
 
-![Phase-gate importance](figures/fig3_phase_gate_importance.png)
+Gates emerge from the segmentation objective alone with no phase-importance supervision. The near-uniform distribution reflects balanced phase utility in the 2.5D setting; NC receives the highest weight, consistent with its role as a stable pre-contrast anatomical reference.
 
-### Complete Combinational Dependency Analysis
+### Complete Combinatorial Dependency Analysis
 
-The fixed trained model was evaluated under all 15 possible non-empty phase combinations on the held-out test split:
+The fixed trained model was evaluated under all 15 non-empty phase subsets on the held-out test split:
 
-| Input Phases  | N | Liver DSC | Tumor DSC  |
-|---------------|---|-----------|------------|
-| NC            | 1 | 0.9183    | 0.1857     |
-| AP            | 1 | 0.9320    | 0.3113     |
-| PVP           | 1 | 0.9530    | 0.3353     |
-| DP            | 1 | 0.9372    | 0.1935     |
-| NC+AP         | 2 | 0.9356    | 0.5696     |
-| NC+PVP        | 2 | 0.9367    | 0.7137     |
-| NC+DP         | 2 | 0.9212    | 0.5655     |
-| AP+PVP        | 2 | 0.9456    | 0.6863     |
-| AP+DP         | 2 | 0.9399    | 0.6635     |
-| PVP+DP        | 2 | 0.9322    | **0.7209** |
-| NC+AP+PVP     | 3 | 0.9459    | 0.6887     |
-| NC+AP+DP      | 3 | 0.9400    | 0.6394     |
-| NC+PVP+DP     | 3 | 0.9344    | 0.6985     |
-| AP+PVP+DP     | 3 | 0.9440    | 0.7109     |
-| NC+AP+PVP+DP  | 4 | 0.9435    | 0.6975     |
+![All Phase Combinations](figures/fig4_all_phase_combinations_tumor_dsc.png)
 
-![Best phase subset per cardinality](figures/fig5_best_phase_subset_summary.png)
+| Input Phases | N | Liver DSC | Tumor DSC |
+|---|:---:|:---:|:---:|
+| NC | 1 | 0.8476 | 0.2362 |
+| AP | 1 | 0.9099 | 0.3960 |
+| **PVP** | **1** | **0.9500** | **0.5360** |
+| DP | 1 | 0.9004 | 0.3746 |
+| NC+AP | 2 | 0.9228 | 0.6966 |
+| NC+PVP | 2 | 0.9364 | 0.7250 |
+| NC+DP | 2 | 0.9097 | 0.7076 |
+| AP+PVP | 2 | 0.9546 | 0.8220 |
+| AP+DP | 2 | 0.9358 | 0.7925 |
+| **PVP+DP** | **2** | **0.9507** | **0.8496** |
+| NC+AP+PVP | 3 | 0.9491 | 0.8078 |
+| NC+AP+DP | 3 | 0.9342 | 0.8054 |
+| NC+PVP+DP | 3 | 0.9447 | 0.8275 |
+| **AP+PVP+DP** | **3** | **0.9522** | **0.8533** |
+| NC+AP+PVP+DP | 4 | 0.9492 | 0.8409 |
 
-Key observations:
+![Best Phase Subsets](figures/fig5_best_phase_subset_summary.png)
 
-1. **Best single phase**: `PVP` (`0.3353` tumor DSC) — consistent with portal venous contrast being central to lesion characterization.
-2. **Best two-phase subset**: `PVP+DP` (`0.7209`) — outperforms the full four-phase input.
-3. **Best three-phase subset**: `AP+PVP+DP` (`0.7109`) — also outperforms the full four-phase input.
-4. **All four phases**: `NC+AP+PVP+DP` (`0.6975`) — strong, but not the absolute top tumor configuration.
+**Key observations:**
+1. **PVP dominates single-phase** (0.5360) — consistent with its clinical role in portal venous contrast differentiation.
+2. **PVP+DP is the best two-phase subset** (0.8496) — a +31 pp gain over PVP alone, observable only because the model preserves phase identity.
+3. **AP+PVP+DP is the best overall** (0.8533) — exceeds the all-phase result (0.8409), showing that adding NC does not help this trained model.
+4. **Flexible inference** — unavailable phases are excluded from gate-weighted fusion; the model degrades gracefully without retraining.
 
-The combination of shared per-phase encoding, learned phase gates, and explicit pairwise interaction modeling yields a robust framework for multi-phase liver tumor segmentation, achieving a **+0.17** absolute improvement in tumor DSC over the Harvard four-phase Attention U-Net baseline while exposing direct, interpretable evidence about which phase combinations are genuinely useful.
+---
 
-## Citations
+## Citation
 
-If you use this work, please cite the following key references:
+If you use this work, please cite:
 
-- Ronneberger, O., Fischer, P., and Brox, T. **U-Net: Convolutional Networks for Biomedical Image Segmentation.** *MICCAI*, 2015.
-- Bilic, P. et al. **The Liver Tumor Segmentation Benchmark (LiTS).** *Medical Image Analysis*, 84:102680, 2023.
-- Oktay, O. et al. **Attention U-Net: Learning Where to Look for the Pancreas.** *MIDL*, 2018.
-- Xu, Y. et al. **PA-ResSeg: A Phase Attention Residual Network for Liver Tumor Segmentation from Multiphase CT Images.** *Medical Physics*, 48(7):3752–3766, 2021.
-- Liu, Z. et al. **PA-Net: A Phase Attention Network Fusing Venous and Arterial Phase Features of CT Images for Liver Tumor Segmentation.** *Computer Methods and Programs in Biomedicine*, 244:107997, 2024.
-- Wu, C. et al. **A Review of Deep Learning Approaches for Multimodal Image Segmentation of Liver Cancer.** *Journal of Applied Clinical Medical Physics*, 25(12):e14540, 2024.
-- Lin, T.-Y. et al. **Focal Loss for Dense Object Detection.** *ICCV*, 2017.
-- Abraham, N. and Khan, N. M. **A Novel Focal Tversky Loss Function with Improved Attention U-Net for Lesion Segmentation.** *ISBI*, 2019.
+```bibtex
+@inproceedings{naveed2026dependency,
+  title     = {Dependency-Aware Multi-Phase Liver Tumor Segmentation with
+               Explicit Phase Interaction Modeling},
+  author    = {Naveed, Areeba and Wajahat, Haider},
+  booktitle = {International Conference on Neural Information Processing (ICONIP)},
+  year      = {2026},
+  publisher = {Springer}
+}
+```
+
+Key references this work builds on: U-Net (Ronneberger et al., MICCAI 2015), Attention U-Net (Oktay et al., MIDL 2018), RIU-Net (Lv et al., BSPC 2022), PA-ResSeg (Xu et al., Medical Physics 2021), PA-Net (Liu et al., CMPB 2024), Focal Loss (Lin et al., ICCV 2017), Focal Tversky Loss (Abraham & Khan, ISBI 2019).
+
+---
 
 ## Authors
 
-- **Haider Wajahat** — 27100252
-- **Areeba Naveed** — 27100239
+- **Areeba Naveed** — 27100239@lums.edu.pk
+- **Haider Wajahat** — 27100252@lums.edu.pk
+
+School of Science and Engineering, Lahore University of Management Sciences, Pakistan
